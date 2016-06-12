@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+
+    <declare-styleable name="FlowLayout">
+        <attr name="android:gravity"/>
+        <attr name="horizonSpacing" format="dimension|reference"/>
+        <attr name="verticalSpacing" format="dimension|reference"/>
+    </declare-styleable>
+
+    <declare-styleable name="FlowLayout_Layout">
+        <attr name="android:layout_gravity"/>
+    </declare-styleable>
+
+</resources>

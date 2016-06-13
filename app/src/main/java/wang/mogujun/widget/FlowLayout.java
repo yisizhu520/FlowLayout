@@ -23,6 +23,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.os.Build;
+import android.support.annotation.ColorInt;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.Gravity;
@@ -42,11 +43,17 @@ public class FlowLayout extends ViewGroup {
     public static final String TAG = "MOGUJUN";
 
     public static final int DEFAULT_SPACING = 8;
+    public static final int DEFAULT_DIVIDER_COLOR = Color.parseColor("#ececec");
+    public static final int DEFAULT_DIVIDER_WIDTH = 3;
 
     private int mGravity = (isIcs() ? Gravity.START : Gravity.LEFT) | Gravity.TOP;
 
     private int mVerticalSpacing; //vertical spacing
     private int mHorizontalSpacing; //horizontal spacing
+    private int mDividerColor;
+    private int mDividerWidth;
+
+    private Paint mDividerPaint = new Paint();
 
     private final List<List<View>> mLines = new ArrayList<>();
     private final List<Integer> mLineHeights = new ArrayList<>();
@@ -79,15 +86,26 @@ public class FlowLayout extends ViewGroup {
         try {
             mHorizontalSpacing = (int) ta.getDimension(R.styleable.FlowLayout_horizonSpacing, DEFAULT_SPACING);
             mVerticalSpacing = (int) ta.getDimension(R.styleable.FlowLayout_verticalSpacing, DEFAULT_SPACING);
+            mDividerWidth = (int) ta.getDimension(R.styleable.FlowLayout_dividerWidth, DEFAULT_DIVIDER_WIDTH);
+            mDividerColor = ta.getColor(R.styleable.FlowLayout_dividerColor, DEFAULT_DIVIDER_COLOR);
             int index = ta.getInt(R.styleable.FlowLayout_android_gravity, -1);
             if (index > 0) {
                 setGravity(index);
             }
+            initPaint();
         } finally {
             ta.recycle();
         }
 
     }
+
+    private void initPaint() {
+        mDividerPaint.setColor(mDividerColor);
+        mDividerPaint.setAntiAlias(true);
+        mDividerPaint.setDither(true);
+        mDividerPaint.setStrokeWidth(mDividerWidth);
+    }
+
 
     public void setHorizontalSpacing(int pixelSize) {
         mHorizontalSpacing = pixelSize;
@@ -99,9 +117,19 @@ public class FlowLayout extends ViewGroup {
         requestLayout();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    public void setDividerColor(@ColorInt int color) {
+        mDividerColor = color;
+        mDividerPaint.setColor(color);
+        invalidate();
+    }
+
+    public void setDividerWidth(int pixelSize) {
+        mDividerWidth = pixelSize;
+        mDividerPaint.setStrokeWidth(pixelSize);
+        invalidate();
+    }
+
+
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
 
@@ -163,6 +191,8 @@ public class FlowLayout extends ViewGroup {
         mLines.add(lineViews);
 
         int maxWidth = Collections.max(mLineWidths);
+
+        processChildHeights();
         int totalHeight = getChildHeights();
 
         //printLineHeights();
@@ -175,12 +205,18 @@ public class FlowLayout extends ViewGroup {
         remeasureChild(widthMeasureSpec);
     }
 
-    private int getChildHeights() {
+    private int mChildHeights;
+
+    private void processChildHeights() {
         int totalHeight = getPaddingTop() + getPaddingBottom() + mVerticalSpacing;
         for (Integer height : mLineHeights) {
             totalHeight += height + mVerticalSpacing;
         }
-        return totalHeight;
+        mChildHeights = totalHeight;
+    }
+
+    private int getChildHeights() {
+        return mChildHeights;
     }
 
     private void remeasureChild(int parentWidthSpec) {
@@ -208,54 +244,20 @@ public class FlowLayout extends ViewGroup {
         }
     }
 
+    private int mVerticalGravityMargin;
+
 
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
 
-        mLineMargins.clear();
+        processHorizontalGravityMargins();
 
-        int width = getWidth();
-        int height = getHeight();
-
-        float horizontalGravityFactor;
-        switch ((mGravity & Gravity.HORIZONTAL_GRAVITY_MASK)) {
-            case Gravity.LEFT:
-            default:
-                horizontalGravityFactor = 0;
-                break;
-            case Gravity.CENTER_HORIZONTAL:
-                horizontalGravityFactor = .5f;
-                break;
-            case Gravity.RIGHT:
-                horizontalGravityFactor = 1;
-                break;
-        }
-
-        int linesNum = mLineWidths.size();
-        for (int i = 0; i < linesNum; i++) {
-            int lineWidth = mLineWidths.get(i);
-            mLineMargins.add((int) ((width - lineWidth) * horizontalGravityFactor) + getPaddingLeft() + mHorizontalSpacing);
-        }
-
-        int verticalGravityMargin;
-        int childHeights = getChildHeights();
-        switch ((mGravity & Gravity.VERTICAL_GRAVITY_MASK)) {
-            case Gravity.TOP:
-            default:
-                verticalGravityMargin = 0;
-                break;
-            case Gravity.CENTER_VERTICAL:
-                verticalGravityMargin = Math.max((height - childHeights) / 2, 0);
-                break;
-            case Gravity.BOTTOM:
-                verticalGravityMargin = Math.max(height - childHeights, 0);
-                break;
-        }
+        processVerticalGravityMargin();
 
         int numLines = mLines.size();
 
         int left;
-        int top = getPaddingTop() + mVerticalSpacing + verticalGravityMargin;
+        int top = getPaddingTop() + mVerticalSpacing + mVerticalGravityMargin;
 
         for (int i = 0; i < numLines; i++) {
 
@@ -293,6 +295,7 @@ public class FlowLayout extends ViewGroup {
                         case Gravity.BOTTOM:
                             gravityMargin = lineHeight - childHeight - lp.topMargin - lp.bottomMargin;
                             break;
+                        //TODO 水平方向上可以支持gravity么？
                     }
                 }
 
@@ -313,21 +316,57 @@ public class FlowLayout extends ViewGroup {
 
     }
 
-    Paint paint = new Paint();
+    private void processVerticalGravityMargin() {
+        int verticalGravityMargin;
+        int childHeights = getChildHeights();
+        switch ((mGravity & Gravity.VERTICAL_GRAVITY_MASK)) {
+            case Gravity.TOP:
+            default:
+                verticalGravityMargin = 0;
+                break;
+            case Gravity.CENTER_VERTICAL:
+                verticalGravityMargin = Math.max((getHeight() - childHeights) / 2, 0);
+                break;
+            case Gravity.BOTTOM:
+                verticalGravityMargin = Math.max(getHeight() - childHeights, 0);
+                break;
+        }
+        mVerticalGravityMargin = verticalGravityMargin;
+    }
+
+    private void processHorizontalGravityMargins() {
+        mLineMargins.clear();
+        float horizontalGravityFactor;
+        switch ((mGravity & Gravity.HORIZONTAL_GRAVITY_MASK)) {
+            case Gravity.LEFT:
+            default:
+                horizontalGravityFactor = 0;
+                break;
+            case Gravity.CENTER_HORIZONTAL:
+                horizontalGravityFactor = .5f;
+                break;
+            case Gravity.RIGHT:
+                horizontalGravityFactor = 1;
+                break;
+        }
+
+        int linesNum = mLineWidths.size();
+        for (int i = 0; i < linesNum; i++) {
+            int lineWidth = mLineWidths.get(i);
+            mLineMargins.add((int) ((getWidth() - lineWidth) * horizontalGravityFactor) + getPaddingLeft() + mHorizontalSpacing);
+        }
+    }
+
 
     @Override
     protected void onDraw(Canvas canvas) {
-        paint.setColor(Color.YELLOW);
-        paint.setStrokeWidth(3);
-        int verticalGravityMargin = 0;
-        int top = getPaddingTop() + mVerticalSpacing + verticalGravityMargin;
 
+        int top = getPaddingTop() + mVerticalSpacing + mVerticalGravityMargin;
         int numLines = mLines.size();
-
         for (int i = 0; i < numLines; i++) {
             int lineHeight = mLineHeights.get(i);
             top += lineHeight + mVerticalSpacing;
-            canvas.drawLine(getPaddingLeft(), top - mVerticalSpacing / 2, getWidth() - getPaddingRight(), top - mVerticalSpacing / 2, paint);
+            canvas.drawLine(getPaddingLeft(), top - mVerticalSpacing / 2, getWidth() - getPaddingRight(), top - mVerticalSpacing / 2, mDividerPaint);
         }
 
     }

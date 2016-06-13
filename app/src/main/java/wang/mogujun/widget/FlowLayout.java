@@ -19,6 +19,9 @@ package wang.mogujun.widget;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
 import android.os.Build;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -27,6 +30,7 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import wang.mogujun.flowlayout.R;
@@ -34,6 +38,8 @@ import wang.mogujun.flowlayout.R;
 
 @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
 public class FlowLayout extends ViewGroup {
+
+    public static final String TAG = "MOGUJUN";
 
     public static final int DEFAULT_SPACING = 8;
 
@@ -45,6 +51,7 @@ public class FlowLayout extends ViewGroup {
     private final List<List<View>> mLines = new ArrayList<>();
     private final List<Integer> mLineHeights = new ArrayList<>();
     private final List<Integer> mLineMargins = new ArrayList<>();
+    private final List<Integer> mLineWidths = new ArrayList<>();
 
     public FlowLayout(Context context) {
         this(context, null);
@@ -97,164 +104,118 @@ public class FlowLayout extends ViewGroup {
      */
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        //TODO 这个有用么？
-        //super.onMeasure(widthMeasureSpec, heightMeasureSpec);
 
-		/*
-        TODO 加入HorizontalSpacing，verticalSpacing
-		TODO 将onLayout里处理child height为match_parent的情况的代码放到这里
+        mLines.clear();
+        mLineHeights.clear();
+        mLineWidths.clear();
 
-		 */
-
-        int sizeWidth = MeasureSpec.getSize(widthMeasureSpec) - getPaddingLeft() - getPaddingRight();
+        int sizeWidth = MeasureSpec.getSize(widthMeasureSpec);
         int sizeHeight = MeasureSpec.getSize(heightMeasureSpec);
 
         int modeWidth = MeasureSpec.getMode(widthMeasureSpec);
         int modeHeight = MeasureSpec.getMode(heightMeasureSpec);
 
-        int width = 0;
-        int height = getPaddingTop() + getPaddingBottom();
+        int widthUsed = getPaddingLeft() + getPaddingRight() + mHorizontalSpacing;
 
-        int lineWidth = 0;
+        int lineWidth = widthUsed;
         int lineHeight = 0;
 
+
         int childCount = getChildCount();
+
+        List<View> lineViews = new ArrayList<>();
 
         for (int i = 0; i < childCount; i++) {
 
             View child = getChildAt(i);
 
-            boolean lastChild = i == childCount - 1;
-
             if (child.getVisibility() == View.GONE) {
-                if (lastChild) {
-                    width = Math.max(width, lineWidth);
-                    height += lineHeight;
-                }
-
                 continue;
             }
 
             LayoutParams lp = (LayoutParams) child.getLayoutParams();
 
-            int childWidthMode = MeasureSpec.AT_MOST;
-            int childWidthSize = sizeWidth;
-
-            switch (modeWidth) {
-                case MeasureSpec.EXACTLY:
-                    if (lp.width == LayoutParams.MATCH_PARENT) {
-                        childWidthMode = MeasureSpec.EXACTLY;
-                        childWidthSize = sizeWidth - lp.leftMargin + lp.rightMargin;
-                    } else if (lp.width == LayoutParams.WRAP_CONTENT) {
-                        childWidthMode = MeasureSpec.AT_MOST;
-                        childWidthSize = sizeWidth;
-                    }else if(lp.width >= 0){
-                        childWidthMode = MeasureSpec.EXACTLY;
-                        childWidthSize = lp.width;
-                    }
-                    break;
-                case MeasureSpec.AT_MOST:
-                case MeasureSpec.UNSPECIFIED:
-                    if (lp.width == LayoutParams.MATCH_PARENT) {
-                        childWidthMode = MeasureSpec.AT_MOST;
-                        childWidthSize = sizeWidth - lp.leftMargin + lp.rightMargin;
-                    } else if (lp.width == LayoutParams.WRAP_CONTENT) {
-                        childWidthMode = MeasureSpec.AT_MOST;
-                        childWidthSize = sizeWidth;
-                    }else if(lp.width >= 0){
-                        childWidthMode = MeasureSpec.EXACTLY;
-                        childWidthSize = lp.width;
-                    }
-                    break;
-            }
-
-            switch (modeHeight) {
-                case MeasureSpec.EXACTLY:
-
-                    break;
-
-                case MeasureSpec.AT_MOST:
-                case MeasureSpec.UNSPECIFIED:
-
-                    break;
-            }
-
-            int childWidthMode = MeasureSpec.AT_MOST;
-            int childWidthSize = sizeWidth;
-            //高度默认是wrap_content
-            int childHeightMode = MeasureSpec.AT_MOST;
-            int childHeightSize = sizeHeight;
-
-            if (lp.width == LayoutParams.MATCH_PARENT) {
-                childWidthMode = MeasureSpec.EXACTLY;
-                childWidthSize -= lp.leftMargin + lp.rightMargin;
-            } else if (lp.width >= 0) {
-                childWidthMode = MeasureSpec.EXACTLY;
-                childWidthSize = lp.width;
-            }
-
-            if (lp.height >= 0) {
-                childHeightMode = MeasureSpec.EXACTLY;
-                childHeightSize = lp.height;
-            } else if (modeHeight == MeasureSpec.UNSPECIFIED) {
-                childHeightMode = MeasureSpec.UNSPECIFIED;
-                childHeightSize = 0;
-            }
-
-            child.measure(
-                    MeasureSpec.makeMeasureSpec(childWidthSize, childWidthMode),
-                    MeasureSpec.makeMeasureSpec(childHeightSize, childHeightMode)
-            );
-
-            Log.i("FlowLayout", String.format("child %d measure height 2--%d", i, child.getMeasuredHeight()));
+            measureChildWithMargins(child, widthMeasureSpec, mHorizontalSpacing * 2, heightMeasureSpec, mVerticalSpacing * 2);
 
             int childWidth = child.getMeasuredWidth() + lp.leftMargin + lp.rightMargin;
+            int childHeight = child.getMeasuredHeight() + lp.topMargin + lp.bottomMargin;
 
-            if (lineWidth + childWidth > sizeWidth) {
+            if (lineWidth + childWidth + mHorizontalSpacing > sizeWidth) {
+                mLineWidths.add(lineWidth);
+                lineWidth = widthUsed + childWidth + mHorizontalSpacing;
 
-                width = Math.max(width, lineWidth);
-                lineWidth = childWidth;
+                mLineHeights.add(lineHeight);
+                lineHeight = childHeight;
 
-                height += lineHeight;
-                lineHeight = child.getMeasuredHeight() + lp.topMargin + lp.bottomMargin;
-
+                mLines.add(lineViews);
+                lineViews = new ArrayList<>();
             } else {
-                lineWidth += childWidth;
-                lineHeight = Math.max(lineHeight, child.getMeasuredHeight() + lp.topMargin + lp.bottomMargin);
+                lineWidth += childWidth + mHorizontalSpacing;
+                lineHeight = Math.max(lineHeight, childHeight);
             }
 
-            if (lastChild) {
-                width = Math.max(width, lineWidth);
-                height += lineHeight;
-            }
+            lineViews.add(child);
 
         }
+        //最后一个child的处理
+        mLineHeights.add(lineHeight);
+        mLineWidths.add(lineWidth);
+        mLines.add(lineViews);
 
-        width += getPaddingLeft() + getPaddingRight();
+        int maxWidth = Collections.max(mLineWidths);
+        int totalHeight = getChildHeights();
+
+        //printLineHeights();
+        //TODO 处理getMinimumWidth/height的情况
 
         setMeasuredDimension(
-                (modeWidth == MeasureSpec.EXACTLY) ? sizeWidth : width,
-                (modeHeight == MeasureSpec.EXACTLY) ? sizeHeight : height);
+                (modeWidth == MeasureSpec.EXACTLY) ? sizeWidth : Math.min(maxWidth, sizeWidth),
+                (modeHeight == MeasureSpec.EXACTLY) ? sizeHeight : Math.min(totalHeight, sizeHeight));
+
+        remeasureChild(widthMeasureSpec);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    private int getChildHeights() {
+        int totalHeight = getPaddingTop() + getPaddingBottom() + mVerticalSpacing;
+        for (Integer height : mLineHeights) {
+            totalHeight += height + mVerticalSpacing;
+        }
+        return totalHeight;
+    }
+
+    private void remeasureChild(int parentWidthSpec) {
+        int numLines = mLines.size();
+        for (int i = 0; i < numLines; i++) {
+            int lineHeight = mLineHeights.get(i);
+            List<View> lineViews = mLines.get(i);
+            int children = lineViews.size();
+            for (int j = 0; j < children; j++) {
+                View child = lineViews.get(j);
+                LayoutParams lp = (LayoutParams) child.getLayoutParams();
+                if (lp.height == LayoutParams.MATCH_PARENT) {
+                    if (child.getVisibility() == View.GONE) {
+                        continue;
+                    }
+
+                    int widthUsed = lp.leftMargin + lp.rightMargin +
+                            getPaddingLeft() + getPaddingRight() + 2 * mHorizontalSpacing;
+                    child.measure(
+                            getChildMeasureSpec(parentWidthSpec, widthUsed, lp.width),
+                            MeasureSpec.makeMeasureSpec(lineHeight - lp.topMargin - lp.bottomMargin, MeasureSpec.EXACTLY)
+                    );
+                }
+            }
+        }
+    }
+
+
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
 
-        mLines.clear();
-        mLineHeights.clear();
         mLineMargins.clear();
 
         int width = getWidth();
         int height = getHeight();
-
-        int linesSum = getPaddingTop();
-
-        int lineWidth = 0;
-        int lineHeight = 0;
-        List<View> lineViews = new ArrayList<View>();
 
         float horizontalGravityFactor;
         switch ((mGravity & Gravity.HORIZONTAL_GRAVITY_MASK)) {
@@ -270,66 +231,36 @@ public class FlowLayout extends ViewGroup {
                 break;
         }
 
-        for (int i = 0; i < getChildCount(); i++) {
-
-            View child = getChildAt(i);
-
-            if (child.getVisibility() == View.GONE) {
-                continue;
-            }
-
-            LayoutParams lp = (LayoutParams) child.getLayoutParams();
-
-            int childWidth = child.getMeasuredWidth() + lp.leftMargin + lp.rightMargin;
-            int childHeight = child.getMeasuredHeight() + lp.bottomMargin + lp.topMargin;
-
-            if (lineWidth + childWidth > width) {
-                mLineHeights.add(lineHeight);
-                mLines.add(lineViews);
-                mLineMargins.add((int) ((width - lineWidth) * horizontalGravityFactor) + getPaddingLeft());
-
-                linesSum += lineHeight;
-
-                lineHeight = 0;
-                lineWidth = 0;
-                lineViews = new ArrayList<View>();
-            }
-
-            lineWidth += childWidth;
-            lineHeight = Math.max(lineHeight, childHeight);
-            lineViews.add(child);
+        int linesNum = mLineWidths.size();
+        for (int i = 0; i < linesNum; i++) {
+            int lineWidth = mLineWidths.get(i);
+            mLineMargins.add((int) ((width - lineWidth) * horizontalGravityFactor) + getPaddingLeft() + mHorizontalSpacing);
         }
 
-        //处理最后一行
-        mLineHeights.add(lineHeight);
-        mLines.add(lineViews);
-        mLineMargins.add((int) ((width - lineWidth) * horizontalGravityFactor) + getPaddingLeft());
-
-        linesSum += lineHeight;
-
-        int verticalGravityMargin = 0;
+        int verticalGravityMargin;
+        int childHeights = getChildHeights();
         switch ((mGravity & Gravity.VERTICAL_GRAVITY_MASK)) {
             case Gravity.TOP:
             default:
+                verticalGravityMargin = 0;
                 break;
             case Gravity.CENTER_VERTICAL:
-                verticalGravityMargin = (height - linesSum) / 2;
+                verticalGravityMargin = Math.max((height - childHeights) / 2, 0);
                 break;
             case Gravity.BOTTOM:
-                verticalGravityMargin = height - linesSum;
+                verticalGravityMargin = Math.max(height - childHeights, 0);
                 break;
         }
 
         int numLines = mLines.size();
 
         int left;
-        //TODO 将初始的top值都放到这里 + verticalGravityMargin
-        int top = getPaddingTop();
+        int top = getPaddingTop() + mVerticalSpacing + verticalGravityMargin;
 
         for (int i = 0; i < numLines; i++) {
 
-            lineHeight = mLineHeights.get(i);
-            lineViews = mLines.get(i);
+            int lineHeight = mLineHeights.get(i);
+            List<View> lineViews = mLines.get(i);
             left = mLineMargins.get(i);
 
             int children = lineViews.size();
@@ -344,35 +275,6 @@ public class FlowLayout extends ViewGroup {
 
                 LayoutParams lp = (LayoutParams) child.getLayoutParams();
 
-                //TODO 为何不在onMeasure方法里做
-                // if height is match_parent we need to remeasure child to line height
-                if (lp.height == LayoutParams.MATCH_PARENT) {
-                    int childWidthMode = MeasureSpec.AT_MOST;
-                    int childWidthSize = width - (lp.leftMargin + lp.rightMargin + getPaddingLeft() + getPaddingRight());
-
-                    if (lp.width == LayoutParams.MATCH_PARENT) {
-                        childWidthMode = MeasureSpec.EXACTLY;
-                    } else if (lp.width >= 0) {
-                        childWidthMode = MeasureSpec.EXACTLY;
-                        childWidthSize = lp.width;
-                    }
-//					int childWidthMode = MeasureSpec.AT_MOST;
-//					int childWidthSize = lineWidth;
-//
-//					if(lp.width == LayoutParams.MATCH_PARENT) {
-//						childWidthMode = MeasureSpec.EXACTLY;
-//					} else if(lp.width >= 0) {
-//						childWidthMode = MeasureSpec.EXACTLY;
-//						childWidthSize = lp.width;
-//					}
-
-                    child.measure(
-                            MeasureSpec.makeMeasureSpec(childWidthSize, childWidthMode),
-                            MeasureSpec.makeMeasureSpec(lineHeight - lp.topMargin - lp.bottomMargin, MeasureSpec.EXACTLY)
-                    );
-                    Log.i("FlowLayout", String.format("child %d measure height 3--%d", i, child.getMeasuredHeight()));
-                }
-
                 int childWidth = child.getMeasuredWidth();
                 int childHeight = child.getMeasuredHeight();
 
@@ -382,6 +284,7 @@ public class FlowLayout extends ViewGroup {
                     switch (lp.gravity) {
                         case Gravity.TOP:
                         default:
+                            gravityMargin = 0;
                             break;
                         case Gravity.CENTER_VERTICAL:
                         case Gravity.CENTER:
@@ -394,17 +297,51 @@ public class FlowLayout extends ViewGroup {
                 }
 
                 child.layout(left + lp.leftMargin,
-                        top + lp.topMargin + gravityMargin + verticalGravityMargin,
-                        left + childWidth + lp.leftMargin,
-                        top + childHeight + lp.topMargin + gravityMargin + verticalGravityMargin);
+                        top + lp.topMargin + gravityMargin,
+                        left + lp.leftMargin + childWidth,
+                        top + lp.topMargin + gravityMargin + childHeight);
 
-                left += childWidth + lp.leftMargin + lp.rightMargin;
+                Log.i(TAG, String.format("child (%d,%d) position: (%d,%d,%d,%d)",
+                        i, j, child.getLeft(), child.getTop(), child.getRight(), child.getBottom()));
+
+                left += childWidth + lp.leftMargin + lp.rightMargin + mHorizontalSpacing;
 
             }
 
-            top += lineHeight;
+            top += lineHeight + mVerticalSpacing;
         }
 
+    }
+
+    Paint paint = new Paint();
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        paint.setColor(Color.YELLOW);
+        paint.setStrokeWidth(3);
+        int verticalGravityMargin = 0;
+        int top = getPaddingTop() + mVerticalSpacing + verticalGravityMargin;
+
+        int numLines = mLines.size();
+
+        for (int i = 0; i < numLines; i++) {
+            int lineHeight = mLineHeights.get(i);
+            top += lineHeight + mVerticalSpacing;
+            canvas.drawLine(getPaddingLeft(), top - mVerticalSpacing / 2, getWidth() - getPaddingRight(), top - mVerticalSpacing / 2, paint);
+        }
+
+    }
+
+    @Override
+    public void setWillNotDraw(boolean willNotDraw) {
+        super.setWillNotDraw(false);
+    }
+
+    private void printLineHeights() {
+        for (int i = 0; i < mLineHeights.size(); i++) {
+            Log.i(TAG, String.format("line %d height : %d",
+                    i, mLineHeights.get(i)));
+        }
     }
 
     @Override

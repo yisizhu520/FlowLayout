@@ -8,4 +8,24 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
+    <style name="text_style_01">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:padding">4dp</item>
+        <!--<item name="android:layout_margin">4dp</item>-->
+        <item name="android:background">@drawable/bg_gray</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textColor">#666666</item>
+    </style>
+
+    <style name="text_style_02">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:padding">2dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:layout_margin">4dp</item>
+        <item name="android:background">@drawable/bg_gray</item>
+        <item name="android:textColor">#ffffff</item>
+    </style>
+
 </resources>

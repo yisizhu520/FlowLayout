@@ -54,11 +54,14 @@ public class FlowLayout extends ViewGroup {
     private int mDividerWidth;
 
     private Paint mDividerPaint = new Paint();
-
+    //保存所有child view
     private final List<List<View>> mLines = new ArrayList<>();
+    //保存所有行高
     private final List<Integer> mLineHeights = new ArrayList<>();
-    private final List<Integer> mLineMargins = new ArrayList<>();
+    //保存所有行宽
     private final List<Integer> mLineWidths = new ArrayList<>();
+    //保存所有行与左边的偏移量
+    private final List<Integer> mLineMargins = new ArrayList<>();
 
     public FlowLayout(Context context) {
         this(context, null);
@@ -96,6 +99,8 @@ public class FlowLayout extends ViewGroup {
         } finally {
             ta.recycle();
         }
+
+        this.setWillNotDraw(false);
 
     }
 
@@ -198,10 +203,12 @@ public class FlowLayout extends ViewGroup {
         //printLineHeights();
         //TODO 处理getMinimumWidth/height的情况
 
+        //设置自身的测量宽高
         setMeasuredDimension(
                 (modeWidth == MeasureSpec.EXACTLY) ? sizeWidth : Math.min(maxWidth, sizeWidth),
                 (modeHeight == MeasureSpec.EXACTLY) ? sizeHeight : Math.min(totalHeight, sizeHeight));
 
+        //重新测量child的lp.height为MATCH_PARENT时的child的尺寸
         remeasureChild(widthMeasureSpec);
     }
 
@@ -366,15 +373,12 @@ public class FlowLayout extends ViewGroup {
         for (int i = 0; i < numLines; i++) {
             int lineHeight = mLineHeights.get(i);
             top += lineHeight + mVerticalSpacing;
-            canvas.drawLine(getPaddingLeft(), top - mVerticalSpacing / 2, getWidth() - getPaddingRight(), top - mVerticalSpacing / 2, mDividerPaint);
+            canvas.drawLine(getPaddingLeft(), top - mVerticalSpacing / 2,
+                    getWidth() - getPaddingRight(), top - mVerticalSpacing / 2, mDividerPaint);
         }
 
     }
 
-    @Override
-    public void setWillNotDraw(boolean willNotDraw) {
-        super.setWillNotDraw(false);
-    }
 
     private void printLineHeights() {
         for (int i = 0; i < mLineHeights.size(); i++) {
@@ -449,6 +453,12 @@ public class FlowLayout extends ViewGroup {
 
         public LayoutParams(int width, int height) {
             super(width, height);
+            gravity = Gravity.TOP;
+        }
+
+        public LayoutParams(int width, int height, int gravity) {
+            super(width, height);
+            this.gravity = gravity;
         }
 
         public LayoutParams(ViewGroup.LayoutParams source) {

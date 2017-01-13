@@ -373,8 +373,11 @@ public class FlowLayout extends ViewGroup {
         for (int i = 0; i < numLines; i++) {
             int lineHeight = mLineHeights.get(i);
             top += lineHeight + mVerticalSpacing;
-            canvas.drawLine(getPaddingLeft(), top - mVerticalSpacing / 2,
-                    getWidth() - getPaddingRight(), top - mVerticalSpacing / 2, mDividerPaint);
+            if(mDividerWidth != 0){
+                canvas.drawLine(getPaddingLeft(), top - mVerticalSpacing / 2,
+                        getWidth() - getPaddingRight(), top - mVerticalSpacing / 2, mDividerPaint);
+            }
+
         }
 
     }

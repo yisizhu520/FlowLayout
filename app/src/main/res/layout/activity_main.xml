@@ -26,7 +26,7 @@
         android:background="#6A6A6A"
         android:gravity="start"
         android:padding="8dp"
-        app:horizonSpacing="8dp"
+        app:horizontalSpacing="8dp"
         app:verticalSpacing="12dp"
         app:dividerColor="#cccccc"
         app:dividerWidth="2dp"

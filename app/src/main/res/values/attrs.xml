@@ -4,7 +4,7 @@
 
     <declare-styleable name="FlowLayout">
         <attr name="android:gravity"/>
-        <attr name="horizonSpacing" format="dimension|reference"/>
+        <attr name="horizontalSpacing" format="dimension|reference"/>
         <attr name="verticalSpacing" format="dimension|reference"/>
         <attr name="dividerColor" format="color|reference"/>
         <attr name="dividerWidth" format="dimension|reference"/>

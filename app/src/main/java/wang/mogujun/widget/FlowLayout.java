@@ -87,7 +87,7 @@ public class FlowLayout extends ViewGroup {
         TypedArray ta = context.obtainStyledAttributes(attrs, R.styleable.FlowLayout, defStyleAttr, defStyleRes);
 
         try {
-            mHorizontalSpacing = (int) ta.getDimension(R.styleable.FlowLayout_horizonSpacing, DEFAULT_SPACING);
+            mHorizontalSpacing = (int) ta.getDimension(R.styleable.FlowLayout_horizontalSpacing, DEFAULT_SPACING);
             mVerticalSpacing = (int) ta.getDimension(R.styleable.FlowLayout_verticalSpacing, DEFAULT_SPACING);
             mDividerWidth = (int) ta.getDimension(R.styleable.FlowLayout_dividerWidth, DEFAULT_DIVIDER_WIDTH);
             mDividerColor = ta.getColor(R.styleable.FlowLayout_dividerColor, DEFAULT_DIVIDER_COLOR);
@@ -204,9 +204,9 @@ public class FlowLayout extends ViewGroup {
         //TODO 处理getMinimumWidth/height的情况
 
         //设置自身的测量宽高
-        setMeasuredDimension(
-                (modeWidth == MeasureSpec.EXACTLY) ? sizeWidth : Math.min(maxWidth, sizeWidth),
-                (modeHeight == MeasureSpec.EXACTLY) ? sizeHeight : Math.min(totalHeight, sizeHeight));
+        this.setMeasuredDimension(
+                resolveSize(maxWidth, widthMeasureSpec),
+                resolveSize(totalHeight, heightMeasureSpec));
 
         //重新测量child的lp.height为MATCH_PARENT时的child的尺寸
         remeasureChild(widthMeasureSpec);
@@ -367,7 +367,12 @@ public class FlowLayout extends ViewGroup {
 
     @Override
     protected void onDraw(Canvas canvas) {
+        if (mDividerWidth != 0) {
+            drawDividerLine(canvas);
+        }
+    }
 
+    private void drawDividerLine(Canvas canvas) {
         int top = getPaddingTop() + mVerticalSpacing + mVerticalGravityMargin;
         int numLines = mLines.size();
         for (int i = 0; i < numLines; i++) {
@@ -376,7 +381,6 @@ public class FlowLayout extends ViewGroup {
             canvas.drawLine(getPaddingLeft(), top - mVerticalSpacing / 2,
                     getWidth() - getPaddingRight(), top - mVerticalSpacing / 2, mDividerPaint);
         }
-
     }
 
 
